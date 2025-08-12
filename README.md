@@ -2,6 +2,8 @@
 
 UM GUIA UTILITÁRIO E DETALHADO PARA A INSTALAÇÃO MANUAL.
 
+** Agradecimento** TuxStation e seu vídeo tutorial no Youtube https://www.youtube.com/watch?v=QYaYUxtFMII&list=PLZftrOaRlDDuu6dWnmSp65MP-Lzmkg9FL
+
 ## Sumário
 
 1. Download e Preparação
@@ -269,6 +271,8 @@ Os últimos passos para garantir que o sistema arranque corretamente e com acess
     - `umount -R /mnt`: Desmonta todas as partições de forma segura antes de reiniciar.
         
     - `shutdown -r now`: Reinicia o computador. Não se esqueça de remover o pen drive!
+
+
         
     
     ```
