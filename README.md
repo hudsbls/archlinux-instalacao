@@ -2,7 +2,7 @@
 
 UM GUIA UTILITÁRIO E DETALHADO PARA A INSTALAÇÃO MANUAL.
 
-** Agradecimento** TuxStation e seu vídeo tutorial no Youtube https://www.youtube.com/watch?v=QYaYUxtFMII&list=PLZftrOaRlDDuu6dWnmSp65MP-Lzmkg9FL
+**Agradecimento** TuxStation e seu vídeo tutorial no [Youtube](https://www.youtube.com/watch?v=QYaYUxtFMII&list=PLZftrOaRlDDuu6dWnmSp65MP-Lzmkg9FL)
 
 ## Sumário
 
