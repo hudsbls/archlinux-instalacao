@@ -1,18 +1,20 @@
-Guia de Instalação do Arch Linux
-Este manual é um guia passo a passo para a instalação do Arch Linux, baseado nas anotações de instalação.
+# Guia de Instalação do Arch Linux
 
-1. Preparação
-Conectar à internet
-Se você precisar de uma conexão Wi-Fi, use os seguintes comandos:
+Este manual é um guia passo a passo para a instalação do Arch Linux, baseado em anotações de instalação pessoal. Ele cobre a configuração do sistema base, drivers NVIDIA e opções de dual-boot.
 
-Bash
+---
 
+## 1. Preparação
+
+### Conectar à internet
+
+Se precisar de uma conexão Wi-Fi, use o `iwctl`. Para listar os seus dispositivos de rede, use `device list`.
+
+```bash
 iwctl
 station <device_name> scan
 station <device_name> get-networks
 station <device_name> connect <network_name>
-Para listar os dispositivos de rede, use device list.
-
 Ajustar o Layout do Teclado
 Para definir o teclado para o padrão brasileiro:
 
@@ -69,26 +71,24 @@ Bash
 nano /etc/pacman.d/mirrorlist
 Adicione as seguintes linhas no topo do arquivo para priorizar os servidores do Brasil e o servidor osbeck:
 
-Server = https://mirror.ufam.edu.br/archlinux/$repo/os/$arch
-Server = https://mirror.osbeck.com/archlinux/$repo/os/$arch
-Você também pode usar o reflector para gerar uma lista atualizada, baseada em velocidade e outros critérios:
+Server = [https://mirror.ufam.edu.br/archlinux/$repo/os/$arch](https://mirror.ufam.edu.br/archlinux/$repo/os/$arch)
+Server = [https://mirror.osbeck.com/archlinux/$repo/os/$arch](https://mirror.osbeck.com/archlinux/$repo/os/$arch)
+Você também pode usar o reflector para gerar uma lista atualizada:
 
 Bash
 
 reflector --country Brazil --latest 20 --sort rate --verbose --save /etc/pacman.d/mirrorlist
-Adicionalmente, ative a cor e o repositório multilib no pacman para uma melhor visualização.
+Ative a cor, downloads paralelos e o repositório multilib no pacman.
 
 Bash
 
 nano /etc/pacman.conf
-Encontre as linhas #Color e #ParallelDownloads = 5 e remova o # para ativá-las. Salve o arquivo.
-
-Em seguida, procure pela seção [multilib] e remova o # das duas linhas para habilitar o repositório:
+Encontre as linhas #Color e #ParallelDownloads = 5 e remova o # para ativá-las. Em seguida, procure pela seção [multilib] e remova o # das duas linhas para habilitar o repositório:
 
 [multilib]
 Include = /etc/pacman.d/mirrorlist
 Instalar o Sistema Base
-Instale os pacotes essenciais, incluindo o linux-headers:
+Instale os pacotes essenciais, incluindo o linux-headers.
 
 Bash
 
@@ -99,8 +99,8 @@ Gere o arquivo fstab para definir como as partições serão montadas na inicial
 
 Bash
 
-genfstab -U /mnt >> /mnt/fstab
-Chroot e Configurações de Sistema
+genfstab -U /mnt >> /mnt/etc/fstab
+Chroot e Configurações
 Entre no ambiente do sistema instalado com arch-chroot.
 
 Bash
@@ -125,7 +125,7 @@ Crie o arquivo locale.conf:
 Bash
 
 echo "LANG=pt_BR.UTF-8" > /etc/locale.conf
-Configure o layout do teclado para o console, para que ele persista após a reinicialização.
+Configure o layout do teclado para o console.
 
 Bash
 
@@ -157,83 +157,74 @@ Defina a senha para o usuário root:
 Bash
 
 passwd
-Crie um novo usuário e adicione-o ao grupo wheel:
+Crie um novo usuário e adicione-o ao grupo wheel.
 
 Bash
 
 useradd -m -G wheel <nome_do_usuario>
 passwd <nome_do_usuario>
 Habilitar Sudoers:
-Para dar ao seu novo usuário privilégios de administrador, edite o arquivo sudoers. É obrigatório usar o comando visudo para evitar erros de sintaxe.
+Para dar ao seu novo usuário privilégios de administrador, edite o arquivo sudoers. É obrigatório usar o comando visudo.
 
 Bash
 
 EDITOR=nano visudo
-Procure a linha que permite que o grupo wheel use o sudo e remova o # no início:
+Procure a linha que permite que o grupo wheel use o sudo e remova o #:
 
 # %wheel ALL=(ALL:ALL) ALL
-Salve o arquivo e saia.
-
 5. Configuração de Gráficos (NVIDIA)
-Esta seção é para usuários de placas de vídeo NVIDIA, garantindo o desempenho gráfico e a aceleração por hardware.
+Esta seção é para usuários de placas de vídeo NVIDIA, garantindo o desempenho e aceleração por hardware.
 
 Instale os pacotes do driver:
-
-nvidia: O driver principal.
-
-nvidia-utils: Ferramentas como nvidia-smi para monitorar a placa.
-
-lib32-nvidia-utils: Bibliotecas de 32 bits, necessárias para rodar aplicações e jogos mais antigos (requer o repositório multilib).
 
 Bash
 
 pacman -S nvidia nvidia-utils lib32-nvidia-utils
 Regenere o initramfs:
-Este comando regenera o initramfs, um pequeno sistema de ficheiros inicial que carrega os módulos do kernel (incluindo o da NVIDIA) antes do sistema principal arrancar.
+Este comando carrega os módulos do kernel (incluindo os da NVIDIA) antes do sistema principal arrancar.
 
 Bash
 
 mkinitcpio -P
 Ative o DRM Kernel Mode Setting:
-Edite o arquivo mkinitcpio.conf e adicione nvidia nvidia_modeset nvidia_uvm nvidia_drm na seção MODULES.
+Edite o arquivo mkinitcpio.conf e adicione os módulos da NVIDIA.
 
 Bash
 
 nano /etc/mkinitcpio.conf
-A linha deve ficar parecida com a seguinte:
+Adicione os módulos nvidia nvidia_modeset nvidia_uvm nvidia_drm na seção MODULES.
 
 MODULES=(... nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-Após editar o arquivo, execute novamente o mkinitcpio -P para aplicar a mudança.
+Após editar, execute novamente o mkinitcpio -P.
 
 6. Bootloader e Finalização
 Instalar e Configurar o GRUB
-Instale os pacotes necessários para o bootloader:
+Instale os pacotes necessários para o bootloader.
 
 Bash
 
-pacman -S dosfstools mtools os-prober efibootmgr grub networkmanager iwd
-Desabilite o OS Prober para evitar problemas.
-Edite o arquivo de configuração do grub.
+pacman -S dosfstools mtools os-prober efibootmgr grub
+Desabilite o OS Prober para evitar conflitos em sistemas dual-boot. Edite o arquivo de configuração do GRUB.
 
 Bash
 
 nano /etc/default/grub
-Procure a linha #GRUB_DISABLE_OS_PROBER e remova o # para ativá-la.
+Procure a linha #GRUB_DISABLE_OS_PROBER=false e remova o # para que a funcionalidade seja desativada.
 
 Instale e Gere o GRUB:
 
-Instale o GRUB na partição EFI:
+Instale o GRUB na partição EFI.
 
 Bash
 
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux --recheck
-Gere o arquivo de configuração do GRUB:
+Gere o arquivo de configuração do GRUB.
 
 Bash
 
 grub-mkconfig -o /boot/grub/grub.cfg
 Configurar e Ativar a Rede
-Para o NetworkManager usar o iwd como backend para o Wi-Fi, crie e edite o arquivo de configuração:
+Para o NetworkManager usar o iwd como backend para o Wi-Fi, crie e edite o arquivo de configuração.
 
 Bash
 
@@ -247,11 +238,19 @@ Habilite o serviço para gerenciar a rede na próxima inicialização.
 Bash
 
 systemctl enable NetworkManager
-Reiniciar
+7. Reiniciar o Sistema
 Saia do ambiente chroot e reinicie o sistema.
 
 Bash
 
 exit
 shutdown -r now
-Após o reinício, remova o pendrive de instalação e o sistema deve iniciar no Arch Linux que você instalou.
+Após o reinício, remova o pendrive de instalação e o sistema deverá iniciar no Arch Linux que você instalou.
+
+
+
+
+
+
+
+O Gemini pode cometer erros. Por isso, é bom checar as respostas.
