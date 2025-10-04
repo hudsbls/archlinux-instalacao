@@ -1,4 +1,3 @@
-````markdown
 # **Guia de Instalação do Arch Linux (UEFI)**
 
 Este manual é um guia passo a passo completo para a instalação do Arch Linux, baseado em um conjunto de anotações específicas, cobrindo o sistema base, drivers NVIDIA, e configurações essenciais de rede e boot.
