@@ -1,256 +1,205 @@
-# Guia de Instalação do Arch Linux
+# **Guia de Instalação do Arch Linux (UEFI)**
 
-Este manual é um guia passo a passo para a instalação do Arch Linux, baseado em anotações de instalação pessoal. Ele cobre a configuração do sistema base, drivers NVIDIA e opções de dual-boot.
+Este manual é um guia passo a passo completo para a instalação do Arch Linux, baseado em um conjunto de anotações específicas, cobrindo o sistema base, drivers NVIDIA, e configurações essenciais de rede e boot.
 
----
+## **1\. Preparação**
 
-## 1. Preparação
+### **Conexão à Internet (Wi-Fi)**
 
-### Conectar à internet
+Se precisar de uma conexão Wi-Fi, use o iwctl. Para listar os seus dispositivos de rede, use device list.
 
-Se precisar de uma conexão Wi-Fi, use o `iwctl`. Para listar os seus dispositivos de rede, use `device list`.
+\# Inicie o utilitário iwctl  
+iwctl   
+\# Liste seus dispositivos de rede  
+device list  
+\# \<device\_name\> é geralmente wlan0 ou similar  
+station \<device\_name\> scan  
+station \<device\_name\> get-networks  
+station \<device\_name\> connect \<network\_name\>
 
-```bash
-iwctl
-station <device_name> scan
-station <device_name> get-networks
-station <device_name> connect <network_name>
-Ajustar o Layout do Teclado
+### **Ajustar o Layout do Teclado**
+
 Para definir o teclado para o padrão brasileiro:
 
-Bash
-
 loadkeys br-abnt2
-2. Particionamento do Disco
-Use a ferramenta fdisk para particionar o disco. Certifique-se de substituir <device_name> pelo seu disco (ex: /dev/sda ou /dev/nvme0n1).
 
-Bash
+## **2\. Particionamento e Montagem**
 
-fdisk /dev/<device_name>
-Crie as seguintes partições:
+Use o fdisk para particionar o disco. Substitua \<device\_name\> pelo seu disco (ex: /dev/sda ou /dev/nvme0n1).
 
-/ (root): ext4
+fdisk /dev/\<device\_name\>
 
-/home: ext4
+**Partições Recomendadas (Exemplo UEFI):**
 
-/boot/efi: fat32 (para sistemas UEFI)
+* **/boot/efi:** (Ex: /dev/sdX1) \- fat32 (para bootloader)  
+* **swap:** (Ex: /dev/sdX2) \- linuxswap  
+* **/ (root):** (Ex: /dev/sdX3) \- ext4  
+* **/home:** (Ex: /dev/sdX4) \- ext4
 
-swap: linuxswap
+### **Formatação das Partições**
 
-Após criar as partições, formate-as:
+Formate as partições criadas:
 
-Bash
+mkfs.fat \-F32 /dev/\<particao\_boot\_efi\>  
+mkswap /dev/\<particao\_swap\>  
+mkfs.ext4 /dev/\<particao\_root\>  
+mkfs.ext4 /dev/\<particao\_home\>
 
-mkfs.ext4 /dev/<particao_root>
-mkfs.ext4 /dev/<particao_home>
-mkfs.fat -F32 /dev/<particao_boot_efi>
-mkswap /dev/<particao_swap>
-Montar as Partições
+### **Montagem das Partições**
+
 Monte as partições no diretório /mnt.
 
-Bash
+mount /dev/\<particao\_root\> /mnt  
+mkdir /mnt/home  
+mount /dev/\<particao\_home\> /mnt/home  
+mkdir /mnt/boot  
+mkdir /mnt/boot/efi  
+mount /dev/\<particao\_boot\_efi\> /mnt/boot/efi  
+swapon /dev/\<particao\_swap\>
 
-mount /dev/<particao_root> /mnt
-mkdir /mnt/home
-mount /dev/<particao_home> /mnt/home
-mkdir /mnt/boot
-mkdir /mnt/boot/efi
-mount /dev/<particao_boot_efi> /mnt/boot/efi
-swapon /dev/<particao_swap>
-3. Instalação do Sistema Base
-Configurar o Pacman
-Instale o reflector para otimizar a lista de espelhos.
+## **3\. Instalação do Sistema Base**
 
-Bash
+### **Configurar o Pacman**
 
-pacman -S reflector
-Edite o arquivo de espelhos para adicionar os servidores de sua preferência.
+1. **Instalar Reflector** para otimizar a lista de mirrors:  
+   pacman \-S reflector
 
-Bash
+2. **Editar mirrorlist** para adicionar servidores e prioridades:  
+   nano /etc/pacman.d/mirrorlist
 
-nano /etc/pacman.d/mirrorlist
-Adicione as seguintes linhas no topo do arquivo para priorizar os servidores do Brasil e o servidor osbeck:
+   Adicione (ou mova para o topo) os servidores do Brasil e osbeck:  
+   Server \= https://mirror.ufam.edu.br/archlinux/$repo/os/$arch  
+   Server \= https://mirror.osbeck.com/archlinux/$repo/os/$arch
 
-Server = [https://mirror.ufam.edu.br/archlinux/$repo/os/$arch](https://mirror.ufam.edu.br/archlinux/$repo/os/$arch)
-Server = [https://mirror.osbeck.com/archlinux/$repo/os/$arch](https://mirror.osbeck.com/archlinux/$repo/os/$arch)
-Você também pode usar o reflector para gerar uma lista atualizada:
+   Ou use o reflector para gerar a lista (opcional):  
+   reflector \--country Brazil \--latest 20 \--sort rate \--verbose \--save /etc/pacman.d/mirrorlist
 
-Bash
+3. **Habilitar Multilib, Cor e Downloads Paralelos** no pacman.conf:  
+   nano /etc/pacman.conf
 
-reflector --country Brazil --latest 20 --sort rate --verbose --save /etc/pacman.d/mirrorlist
-Ative a cor, downloads paralelos e o repositório multilib no pacman.
+   Remova o \# das linhas:  
+   * \#Color  
+   * \#ParallelDownloads \= 5  
+   * \[multilib\] e sua linha Include
 
-Bash
+### **Instalar Pacotes Essenciais**
 
-nano /etc/pacman.conf
-Encontre as linhas #Color e #ParallelDownloads = 5 e remova o # para ativá-las. Em seguida, procure pela seção [multilib] e remova o # das duas linhas para habilitar o repositório:
-
-[multilib]
-Include = /etc/pacman.d/mirrorlist
-Instalar o Sistema Base
-Instale os pacotes essenciais, incluindo o linux-headers.
-
-Bash
+Instale os pacotes básicos (incluindo linux-headers, essencial para drivers de placa de vídeo).
 
 pacstrap /mnt base base-devel linux linux-headers linux-firmware nano vim
-4. Configuração do Sistema
-Gerar o Fstab
-Gere o arquivo fstab para definir como as partições serão montadas na inicialização.
 
-Bash
+## **4\. Configuração do Sistema (Chroot)**
 
-genfstab -U /mnt >> /mnt/etc/fstab
-Chroot e Configurações
-Entre no ambiente do sistema instalado com arch-chroot.
+### **Gerar Fstab e Entrar em Chroot**
 
-Bash
-
+genfstab \-U /mnt \>\> /mnt/etc/fstab  
 arch-chroot /mnt
-Fuso Horário e Idioma
-Defina o fuso horário e o idioma. Para o Brasil, use:
 
-Bash
+### **Fuso Horário, Idioma e Teclado**
 
-ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
-timedatectl set-ntp true
-hwclock --systohc
-Edite o arquivo locale.gen e descomente o seu idioma (ex: pt_BR.UTF-8).
+\# Fuso horário e NTP  
+ln \-sf /usr/share/zoneinfo/America/Sao\_Paulo /etc/localtime  
+timedatectl set-ntp true  
+hwclock \--systohc
 
-Bash
-
-nano /etc/locale.gen
+\# Idioma (descomente pt\_BR.UTF-8)  
+nano /etc/locale.gen  
 locale-gen
-Crie o arquivo locale.conf:
 
-Bash
+\# Criar locale.conf  
+echo "LANG=pt\_BR.UTF-8" \> /etc/locale.conf
 
-echo "LANG=pt_BR.UTF-8" > /etc/locale.conf
-Configure o layout do teclado para o console.
+\# Configurar teclado do console  
+nano /etc/vconsole.conf  
+\# Adicione:  
+\# KEYMAP=br-abnt2
 
-Bash
+### **Rede e Nome do Host**
 
-nano /etc/vconsole.conf
-Adicione a seguinte linha:
+Defina o nome da sua máquina e configure o mapeamento de hosts.
 
-KEYMAP=br-abnt2
-Rede e Nome do Host
-Defina o nome do seu computador (hostname).
+\# Definir Hostname  
+echo "archlinux" \> /etc/hostname
 
-Bash
-
-echo "archlinux" > /etc/hostname
-Nota sobre Hostname e Hosts: O hostname é o nome da sua máquina na rede. Ele é definido no arquivo /etc/hostname. Já o arquivo /etc/hosts faz o mapeamento do nome do host para um endereço IP. É crucial que o nome utilizado em ambos os arquivos seja o mesmo.
-
-Edite o arquivo hosts:
-
-Bash
-
+\# Editar arquivo hosts  
 nano /etc/hosts
-Adicione as seguintes linhas, substituindo archlinux pelo nome que você escolheu:
 
-127.0.0.1   localhost
-::1         localhost
+Substitua archlinux pelo hostname escolhido:
+
+127.0.0.1   localhost  
+::1         localhost  
 127.0.1.1   archlinux.localdomain   archlinux
-Senha de Root e Usuário
-Defina a senha para o usuário root:
 
-Bash
+### **Usuários e Sudoers**
 
-passwd
-Crie um novo usuário e adicione-o ao grupo wheel.
+1. **Definir senha de root:**  
+   passwd
 
-Bash
+2. **Criar novo usuário e definir senha:**  
+   useradd \-m \-G wheel \<nome\_do\_usuario\>  
+   passwd \<nome\_do\_usuario\>
 
-useradd -m -G wheel <nome_do_usuario>
-passwd <nome_do_usuario>
-Habilitar Sudoers:
-Para dar ao seu novo usuário privilégios de administrador, edite o arquivo sudoers. É obrigatório usar o comando visudo.
+3. Habilitar Sudoers (acesso admin para o grupo wheel):  
+   Use visudo com o editor nano (obrigatório para evitar erros de sintaxe).  
+   EDITOR=nano visudo
 
-Bash
+   Descomente a linha:  
+   \# %wheel ALL=(ALL:ALL) ALL
 
-EDITOR=nano visudo
-Procure a linha que permite que o grupo wheel use o sudo e remova o #:
+## **5\. Configuração de Gráficos (NVIDIA)**
 
-# %wheel ALL=(ALL:ALL) ALL
-5. Configuração de Gráficos (NVIDIA)
-Esta seção é para usuários de placas de vídeo NVIDIA, garantindo o desempenho e aceleração por hardware.
+Esta seção é para usuários de placas de vídeo NVIDIA que buscam aceleração por hardware.
 
-Instale os pacotes do driver:
+1. **Instale os pacotes do driver:**  
+   pacman \-S nvidia nvidia-utils lib32-nvidia-utils
 
-Bash
+2. Ative o DRM Kernel Mode Setting:  
+   Edite o arquivo mkinitcpio.conf e adicione os módulos da NVIDIA na seção MODULES.  
+   nano /etc/mkinitcpio.conf
 
-pacman -S nvidia nvidia-utils lib32-nvidia-utils
-Regenere o initramfs:
-Este comando carrega os módulos do kernel (incluindo os da NVIDIA) antes do sistema principal arrancar.
+   A linha deve ficar assim (adicionando os módulos nvidia e relacionados):  
+   MODULES=(... nvidia nvidia\_modeset nvidia\_uvm nvidia\_drm)
 
-Bash
+3. **Regenere o initramfs** para carregar os novos módulos:  
+   mkinitcpio \-P
 
-mkinitcpio -P
-Ative o DRM Kernel Mode Setting:
-Edite o arquivo mkinitcpio.conf e adicione os módulos da NVIDIA.
+## **6\. Bootloader e Rede**
 
-Bash
+### **Instalar e Configurar o GRUB**
 
-nano /etc/mkinitcpio.conf
-Adicione os módulos nvidia nvidia_modeset nvidia_uvm nvidia_drm na seção MODULES.
+1. **Instale os pacotes do bootloader:**  
+   pacman \-S dosfstools mtools os-prober efibootmgr grub networkmanager iwd
 
-MODULES=(... nvidia nvidia_modeset nvidia_uvm nvidia_drm)
-Após editar, execute novamente o mkinitcpio -P.
+2. **Desabilite o OS Prober** (recomendado para dual boot ou para um menu limpo):  
+   nano /etc/default/grub
 
-6. Bootloader e Finalização
-Instalar e Configurar o GRUB
-Instale os pacotes necessários para o bootloader.
+   Procure a linha **\#GRUB\_DISABLE\_OS\_PROBER=false** e remova o \# para desativar a função de procurar outros sistemas.  
+3. **Instalar e Gerar o GRUB:**  
+   \# Instale o GRUB na partição EFI  
+   grub-install \--target=x86\_64-efi \--efi-directory=/boot/efi \--bootloader-id=archlinux \--recheck
 
-Bash
+   \# Gere o arquivo de configuração do GRUB  
+   grub-mkconfig \-o /boot/grub/grub.cfg
 
-pacman -S dosfstools mtools os-prober efibootmgr grub
-Desabilite o OS Prober para evitar conflitos em sistemas dual-boot. Edite o arquivo de configuração do GRUB.
+### **Configurar e Ativar a Rede**
 
-Bash
+Para o NetworkManager usar o iwd como backend para o Wi-Fi:
 
-nano /etc/default/grub
-Procure a linha #GRUB_DISABLE_OS_PROBER=false e remova o # para que a funcionalidade seja desativada.
+1. **Crie e edite o arquivo de configuração do NetworkManager:**  
+   nano /etc/NetworkManager/conf.d/wifi\_backend.conf
 
-Instale e Gere o GRUB:
+   Adicione o seguinte conteúdo:  
+   \[device\]  
+   wifi.backend=iwd
 
-Instale o GRUB na partição EFI.
+2. **Habilite o serviço:**  
+   systemctl enable NetworkManager
 
-Bash
+## **7\. Reiniciar o Sistema**
 
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux --recheck
-Gere o arquivo de configuração do GRUB.
+Saia do ambiente chroot e reinicie a máquina.
 
-Bash
+exit  
+shutdown \-r now
 
-grub-mkconfig -o /boot/grub/grub.cfg
-Configurar e Ativar a Rede
-Para o NetworkManager usar o iwd como backend para o Wi-Fi, crie e edite o arquivo de configuração.
-
-Bash
-
-nano /etc/NetworkManager/conf.d/wifi_backend.conf
-Adicione o seguinte conteúdo ao arquivo:
-
-[device]
-wifi.backend=iwd
-Habilite o serviço para gerenciar a rede na próxima inicialização.
-
-Bash
-
-systemctl enable NetworkManager
-7. Reiniciar o Sistema
-Saia do ambiente chroot e reinicie o sistema.
-
-Bash
-
-exit
-shutdown -r now
 Após o reinício, remova o pendrive de instalação e o sistema deverá iniciar no Arch Linux que você instalou.
-
-
-
-
-
-
-
-O Gemini pode cometer erros. Por isso, é bom checar as respostas.
