@@ -1,281 +1,257 @@
-# 🐧 GUIA DE INSTALAÇÃO ARCH LINUX
+Guia de Instalação do Arch Linux
+Este manual é um guia passo a passo para a instalação do Arch Linux, baseado nas anotações de instalação.
 
-UM GUIA UTILITÁRIO E DETALHADO PARA A INSTALAÇÃO MANUAL.
+1. Preparação
+Conectar à internet
+Se você precisar de uma conexão Wi-Fi, use os seguintes comandos:
 
-**Agradecimento**: TuxStation e seu vídeo [tutorial](https://www.youtube.com/watch?v=QYaYUxtFMII&list=PLZftrOaRlDDuu6dWnmSp65MP-Lzmkg9FL) no youtube.
+Bash
 
-## Sumário
+iwctl
+station <device_name> scan
+station <device_name> get-networks
+station <device_name> connect <network_name>
+Para listar os dispositivos de rede, use device list.
 
-1. Download e Preparação
-    
-2. Configuração Inicial
-    
-3. Particionamento do Disco
-    
-4. Formatação e Montagem
-    
-5. Instalação do Sistema Base
-    
-6. Configuração (Chroot)
-    
-7. Bootloader (GRUB)
-    
-8. Drivers de Vídeo (NVIDIA)
-    
-9. Finalização
-    
+Ajustar o Layout do Teclado
+Para definir o teclado para o padrão brasileiro:
 
-### Download e Preparação
+Bash
 
-Nesta fase inicial, o objetivo é obter a imagem de instalação oficial do Arch Linux e gravá-la num pen drive, tornando-o inicializável (bootável). Isto permite que o seu computador arranque a partir do pen drive e carregue o ambiente de instalação temporário do Arch.
+loadkeys br-abnt2
+2. Particionamento do Disco
+Use a ferramenta fdisk para particionar o disco. Certifique-se de substituir <device_name> pelo seu disco (ex: /dev/sda ou /dev/nvme0n1).
 
-1. **Baixe a ISO:** A imagem ISO é um arquivo único que contém todo o sistema de instalação. É fundamental baixá-la do [site oficial](https://archlinux.org/download/ "null") para garantir a sua integridade e segurança.
-    
-2. **Crie um Pen Drive Bootável:** Ferramentas como Balena Etcher, Ventoy ou Rufus descompactam a imagem ISO e preparam o pen drive para que a BIOS/UEFI do seu computador o reconheça como um dispositivo de arranque.
-    
-3. **Inicie pelo Pen Drive:** Ao selecionar `Arch Linux install medium`, está a instruir o computador a carregar o ambiente live, que corre inteiramente a partir da RAM, sem tocar ainda no seu disco rígido.
-    
+Bash
 
-### Configuração Inicial
+fdisk /dev/<device_name>
+Crie as seguintes partições:
 
-Antes de instalar, precisamos de configurar o ambiente live para que seja utilizável.
+/ (root): ext4
 
-1. **Layout do Teclado (BR-ABNT2):** O sistema live vem por defeito com o layout de teclado americano. Este comando ajusta-o para o padrão brasileiro, permitindo o uso correto de acentos e caracteres como o "ç".
-    
-    ```
-    loadkeys br-abnt2
-    ```
-    
-2. **Conexão Wi-Fi:** O `iwctl` é uma ferramenta interativa para gerir redes sem fios. É essencial para se conectar à internet, o que é necessário para descarregar os pacotes do sistema.
-    
-    ```
-    iwctl
-    ```
-    
-3. **Verifique a conexão:** O comando `ping` envia um pequeno pacote de dados para um servidor na internet e espera por uma resposta. É a forma mais simples de confirmar que a sua conexão está ativa.
-    
-    ```
-    ping archlinux.org
-    ```
-    
+/home: ext4
 
-### Particionamento do Disco
+/boot/efi: fat32 (para sistemas UEFI)
 
-Esta é uma das etapas mais críticas. Particionar é como dividir o seu disco rígido (ou SSD) em diferentes secções, onde cada uma terá um propósito específico.
+swap: linuxswap
 
-1. **Identifique o modo de firmware:** Saber se o seu sistema usa **UEFI** (moderno) ou **BIOS** (antigo) determina como o disco deve ser preparado para o arranque. O comando verifica a existência de um diretório que só existe em sistemas UEFI.
-    
-    ```
-    ls /sys/firmware/efi/efivars
-    ```
-    
-2. **Particione com `cfdisk`:** `lsblk` lista os seus discos. O `cfdisk` é uma ferramenta visual para criar, apagar e modificar as partições (ex: `/dev/sda` para um disco SATA, `/dev/nvme0n1` para um SSD NVMe).
-    
-    ```
-    lsblk
-    cfdisk /dev/sda
-    ```
-    
+Após criar as partições, formate-as:
 
-### Formatação e Montagem
+Bash
 
-Depois de criar as partições, elas são como terrenos vazios. A formatação cria um sistema de ficheiros (como `ext4` ou `FAT32`), que é a estrutura que organiza como os dados são guardados. A montagem associa essas partições formatadas a diretórios do sistema.
+mkfs.ext4 /dev/<particao_root>
+mkfs.ext4 /dev/<particao_home>
+mkfs.fat -F32 /dev/<particao_boot_efi>
+mkswap /dev/<particao_swap>
+Montar as Partições
+Monte as partições no diretório /mnt.
 
-1. **Formate as partições:**
-    
-    - `mkfs.fat`: Formata a partição EFI em `FAT32`, o padrão exigido pela especificação UEFI.
-        
-    - `mkfs.ext4`: Formata as partições do sistema (`/`) e dos seus ficheiros pessoais (`/home`) com `ext4`, um sistema de ficheiros robusto e popular para Linux.
-        
-    - `mkswap`: Prepara a partição de swap, que funciona como uma extensão da memória RAM.
-        
-    
-    ```
-    # UEFI
-    mkfs.fat -F32 /dev/sda1
-    # Raiz e Home
-    mkfs.ext4 /dev/sda2
-    # Swap
-    mkswap /dev/sda4
-    ```
-    
-2. **Monte as partições:**
-    
-    - `mount`: Associa a partição raiz (`/dev/sda2`) ao diretório `/mnt`. A partir de agora, tudo o que for instalado em `/mnt` será, na verdade, gravado no seu disco.
-        
-    - `swapon`: Ativa a partição de swap.
-        
-    
-    ```
-    mount /dev/sda2 /mnt
-    mkdir -p /mnt/boot /mnt/home
-    mount /dev/sda1 /mnt/boot
-    mount /dev/sda3 /mnt/home
-    swapon /dev/sda4
-    ```
-    
+Bash
 
-### Instalação do Sistema Base
+mount /dev/<particao_root> /mnt
+mkdir /mnt/home
+mount /dev/<particao_home> /mnt/home
+mkdir /mnt/boot
+mkdir /mnt/boot/efi
+mount /dev/<particao_boot_efi> /mnt/boot/efi
+swapon /dev/<particao_swap>
+3. Instalação do Sistema Base
+Configurar o Pacman
+Instale o reflector para otimizar a lista de espelhos.
 
-Agora, com o disco preparado, vamos descarregar e instalar os pacotes essenciais que formam o núcleo do Arch Linux.
+Bash
 
-1. **Otimize os espelhos (opcional):** O `reflector` testa e seleciona os servidores de download (espelhos) mais rápidos para a sua localização, acelerando significativamente a instalação.
-    
-    ```
-    pacman -Sy reflector
-    reflector --country Brazil --latest 20 --sort rate --save /etc/pacman.d/mirrorlist
-    ```
-    
-2. **Instale os pacotes base:** O `pacstrap` é um script que instala os pacotes diretamente no diretório montado (`/mnt`).
-    
-    - `base`: O conjunto mínimo de pacotes para um sistema funcional.
-        
-    - `base-devel`: Ferramentas de compilação, úteis para instalar software do AUR (Arch User Repository).
-        
-    - `linux`: O kernel do Linux, o coração do sistema operativo.
-        
-    - `linux-firmware`: Ficheiros de firmware necessários para que o kernel comunique com diversos hardwares (placas de rede, gráficas, etc.).
-        
-    - `nano`: Um editor de texto simples para a linha de comandos.
-        
-    - `networkmanager`: Um serviço essencial para gerir as conexões de rede após a instalação.
-        
-    
-    ```
-    pacstrap /mnt base base-devel linux linux-firmware nano networkmanager
-    ```
-    
+pacman -S reflector
+Edite o arquivo de espelhos para adicionar os servidores de sua preferência.
 
-### Configuração (Chroot)
+Bash
 
-Até agora, estávamos a operar a partir do ambiente live do pen drive. O `arch-chroot` permite-nos "entrar" no sistema que acabámos de instalar no disco rígido e configurá-lo por dentro, como se já tivéssemos arrancado a partir dele.
+nano /etc/pacman.d/mirrorlist
+Adicione as seguintes linhas no topo do arquivo para priorizar os servidores do Brasil e o servidor osbeck:
 
-1. **Acesse o novo sistema:**
-    
-    - `genfstab`: Gera um ficheiro que diz ao sistema quais partições montar e onde, durante o arranque.
-        
-    - `arch-chroot`: Muda a raiz do ambiente atual para `/mnt`.
-        
-    
-    ```
-    genfstab -U /mnt >> /mnt/etc/fstab
-    arch-chroot /mnt
-    ```
-    
-2. **Configure sistema (local, tempo, teclado):** Estas configurações definem o fuso horário, o idioma e o layout de teclado padrão para o seu novo sistema.
-    
-    ```
-    ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
-    hwclock --systohc
-    locale-gen
-    echo "LANG=pt_BR.UTF-8" > /etc/locale.conf
-    echo "KEYMAP=br-abnt2" > /etc/vconsole.conf
-    ```
-    
-3. **Crie usuário e senhas:** Por segurança, não se deve usar o superutilizador (`root`) para tarefas diárias. Criamos um utilizador normal e definimos senhas para ambos. O grupo `wheel` é o grupo padrão que pode obter privilégios de administrador.
-    
-    ```
-    passwd
-    useradd -m -G wheel <seu_usuario>
-    passwd <seu_usuario>
-    ```
-    
-4. **Habilite o sudo:** O `sudo` permite que um utilizador normal execute comandos como `root` de forma segura. O `visudo` é a ferramenta segura para editar as suas permissões, e ao descomentar a linha `%wheel ALL=(ALL:ALL) ALL`, estamos a dar permissão de `sudo` a todos os utilizadores do grupo `wheel`.
-    
-    ```
-    pacman -S sudo
-    EDITOR=nano visudo
-    ```
-    
+Server = https://mirror.ufam.edu.br/archlinux/$repo/os/$arch
+Server = https://mirror.osbeck.com/archlinux/$repo/os/$arch
+Você também pode usar o reflector para gerar uma lista atualizada, baseada em velocidade e outros critérios:
 
-### Bootloader (GRUB)
+Bash
 
-O bootloader é o primeiro programa que corre quando liga o computador. A sua função é carregar o kernel do sistema operativo (neste caso, o Linux). O GRUB é um dos bootloaders mais populares e poderosos.
+reflector --country Brazil --latest 20 --sort rate --verbose --save /etc/pacman.d/mirrorlist
+Adicionalmente, ative a cor e o repositório multilib no pacman para uma melhor visualização.
 
-1. **Instale pacotes:**
-    
-    - `grub`: O bootloader em si.
-        
-    - `efibootmgr`: Ferramenta para gerir as entradas de arranque da UEFI.
-        
-    - `os-prober`: Deteta outros sistemas operativos (como o Windows) para adicionar ao menu de arranque (dual boot).
-        
-    
-    ```
-    pacman -S grub efibootmgr os-prober
-    ```
-    
-2. **Instale o GRUB (UEFI):** Este comando instala os ficheiros do GRUB na partição EFI e cria uma entrada de arranque na UEFI do seu computador.
-    
-    ```
-    grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch
-    ```
-    
-3. **Gere a configuração:** O `grub-mkconfig` gera o ficheiro de configuração `grub.cfg`, que contém o menu que vê ao ligar o PC, com as opções para arrancar o Arch Linux.
-    
-    ```
-    grub-mkconfig -o /boot/grub/grub.cfg
-    ```
-    
+Bash
 
-### Drivers de Vídeo (NVIDIA)
+nano /etc/pacman.conf
+Encontre as linhas #Color e #ParallelDownloads = 5 e remova o # para ativá-las. Salve o arquivo.
 
-Esta etapa é crucial para quem tem uma placa gráfica NVIDIA, garantindo o desempenho gráfico e a aceleração por hardware.
+Em seguida, procure pela seção [multilib] e remova o # das duas linhas para habilitar o repositório:
 
-1. **Instale os pacotes do driver:**
-    
-    - `nvidia`: O driver principal.
-        
-    - `nvidia-utils`: Ferramentas como `nvidia-smi` para monitorizar a placa.
-        
-    - `lib32-nvidia-utils`: Bibliotecas de 32 bits, necessárias para correr aplicações e jogos mais antigos (requer o repositório `multilib`).
-        
-    
-    ```
-    pacman -S nvidia nvidia-utils lib32-nvidia-utils
-    ```
-    
-2. **`mkinitcpio`:** Este comando regenera o `initramfs`, um pequeno sistema de ficheiros inicial que carrega os módulos do kernel (incluindo o da NVIDIA) antes do sistema principal arrancar. Geralmente, é executado automaticamente pela instalação do driver.
-    
-    ```
-    mkinitcpio -P
-    ```
-    
-3. **Ative o DRM Kernel Mode Setting:** O `DRM (Direct Rendering Manager)` é um subsistema do kernel que gere a saída de vídeo. Ativar o `modeset` para a NVIDIA permite uma transição mais suave e estável do ecrã de arranque para o ambiente gráfico, evitando ecrãs pretos.
-    
-4. **Regenere a configuração do GRUB:** É necessário para que a opção `nvidia_drm.modeset=1` que adicionou seja aplicada no próximo arranque.
-    
-    ```
-    grub-mkconfig -o /boot/grub/grub.cfg
-    ```
-    
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+Instalar o Sistema Base
+Instale os pacotes essenciais, incluindo o linux-headers:
 
-### Finalização
+Bash
 
-Os últimos passos para garantir que o sistema arranque corretamente e com acesso à rede.
+pacstrap /mnt base base-devel linux linux-headers linux-firmware nano vim
+4. Configuração do Sistema
+Gerar o Fstab
+Gere o arquivo fstab para definir como as partições serão montadas na inicialização.
 
-1. **Habilite a rede e saia:**
-    
-    - `systemctl enable NetworkManager`: Configura o serviço de rede para iniciar automaticamente com o sistema.
-        
-    - `exit`: Sai do ambiente `chroot`, voltando para o ambiente live do pen drive.
-        
-    
-    ```
-    systemctl enable NetworkManager
-    exit
-    ```
-    
-2. **Desmonte e reinicie:**
-    
-    - `umount -R /mnt`: Desmonta todas as partições de forma segura antes de reiniciar.
-        
-    - `shutdown -r now`: Reinicia o computador. Não se esqueça de remover o pen drive!
+Bash
 
+genfstab -U /mnt >> /mnt/fstab
+Chroot e Configurações de Sistema
+Entre no ambiente do sistema instalado com arch-chroot.
 
-        
-    
-    ```
-    umount -R /mnt
-    shutdown -r now
-    ```
+Bash
+
+arch-chroot /mnt
+Fuso Horário e Idioma
+Defina o fuso horário e o idioma. Para o Brasil, use:
+
+Bash
+
+ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+timedatectl set-ntp true
+hwclock --systohc
+Edite o arquivo locale.gen e descomente o seu idioma (ex: pt_BR.UTF-8).
+
+Bash
+
+nano /etc/locale.gen
+locale-gen
+Crie o arquivo locale.conf:
+
+Bash
+
+echo "LANG=pt_BR.UTF-8" > /etc/locale.conf
+Configure o layout do teclado para o console, para que ele persista após a reinicialização.
+
+Bash
+
+nano /etc/vconsole.conf
+Adicione a seguinte linha:
+
+KEYMAP=br-abnt2
+Rede e Nome do Host
+Defina o nome do seu computador (hostname).
+
+Bash
+
+echo "archlinux" > /etc/hostname
+Nota sobre Hostname e Hosts: O hostname é o nome da sua máquina na rede. Ele é definido no arquivo /etc/hostname. Já o arquivo /etc/hosts faz o mapeamento do nome do host para um endereço IP. É crucial que o nome utilizado em ambos os arquivos seja o mesmo.
+
+Edite o arquivo hosts:
+
+Bash
+
+nano /etc/hosts
+Adicione as seguintes linhas, substituindo archlinux pelo nome que você escolheu:
+
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   archlinux.localdomain   archlinux
+Senha de Root e Usuário
+Defina a senha para o usuário root:
+
+Bash
+
+passwd
+Crie um novo usuário e adicione-o ao grupo wheel:
+
+Bash
+
+useradd -m -G wheel <nome_do_usuario>
+passwd <nome_do_usuario>
+Habilitar Sudoers:
+Para dar ao seu novo usuário privilégios de administrador, edite o arquivo sudoers. É obrigatório usar o comando visudo para evitar erros de sintaxe.
+
+Bash
+
+EDITOR=nano visudo
+Procure a linha que permite que o grupo wheel use o sudo e remova o # no início:
+
+# %wheel ALL=(ALL:ALL) ALL
+Salve o arquivo e saia.
+
+5. Configuração de Gráficos (NVIDIA)
+Esta seção é para usuários de placas de vídeo NVIDIA, garantindo o desempenho gráfico e a aceleração por hardware.
+
+Instale os pacotes do driver:
+
+nvidia: O driver principal.
+
+nvidia-utils: Ferramentas como nvidia-smi para monitorar a placa.
+
+lib32-nvidia-utils: Bibliotecas de 32 bits, necessárias para rodar aplicações e jogos mais antigos (requer o repositório multilib).
+
+Bash
+
+pacman -S nvidia nvidia-utils lib32-nvidia-utils
+Regenere o initramfs:
+Este comando regenera o initramfs, um pequeno sistema de ficheiros inicial que carrega os módulos do kernel (incluindo o da NVIDIA) antes do sistema principal arrancar.
+
+Bash
+
+mkinitcpio -P
+Ative o DRM Kernel Mode Setting:
+Edite o arquivo mkinitcpio.conf e adicione nvidia nvidia_modeset nvidia_uvm nvidia_drm na seção MODULES.
+
+Bash
+
+nano /etc/mkinitcpio.conf
+A linha deve ficar parecida com a seguinte:
+
+MODULES=(... nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+Após editar o arquivo, execute novamente o mkinitcpio -P para aplicar a mudança.
+
+6. Bootloader e Finalização
+Instalar e Configurar o GRUB
+Instale os pacotes necessários para o bootloader:
+
+Bash
+
+pacman -S dosfstools mtools os-prober efibootmgr grub networkmanager iwd
+Desabilite o OS Prober para evitar problemas.
+Edite o arquivo de configuração do grub.
+
+Bash
+
+nano /etc/default/grub
+Procure a linha #GRUB_DISABLE_OS_PROBER e remova o # para ativá-la.
+
+Instale e Gere o GRUB:
+
+Instale o GRUB na partição EFI:
+
+Bash
+
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux --recheck
+Gere o arquivo de configuração do GRUB:
+
+Bash
+
+grub-mkconfig -o /boot/grub/grub.cfg
+Configurar e Ativar a Rede
+Para o NetworkManager usar o iwd como backend para o Wi-Fi, crie e edite o arquivo de configuração:
+
+Bash
+
+nano /etc/NetworkManager/conf.d/wifi_backend.conf
+Adicione o seguinte conteúdo ao arquivo:
+
+[device]
+wifi.backend=iwd
+Habilite o serviço para gerenciar a rede na próxima inicialização.
+
+Bash
+
+systemctl enable NetworkManager
+Reiniciar
+Saia do ambiente chroot e reinicie o sistema.
+
+Bash
+
+exit
+shutdown -r now
+Após o reinício, remova o pendrive de instalação e o sistema deve iniciar no Arch Linux que você instalou.
