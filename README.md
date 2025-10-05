@@ -98,7 +98,25 @@ swapon /dev/<particao_swap>
    reflector --country Brazil --latest 20 --sort rate --verbose --save /etc/pacman.d/mirrorlist
    ```
 
-3. **Habilitar Multilib, Cor e Downloads Paralelos** no pacman.conf:
+
+
+### **Instalar Pacotes Essenciais**
+
+```bash
+pacstrap /mnt base base-devel linux linux-headers linux-firmware nano vim
+```
+
+---
+
+## **3. Configuração do Sistema (Chroot)**
+
+### **Gerar Fstab e Entrar em Chroot**
+
+```bash
+genfstab -U /mnt >> /mnt/etc/fstab
+arch-chroot /mnt
+```
+**Habilitar Multilib, Cor e Downloads Paralelos** no pacman.conf:
 
    ```bash
    nano /etc/pacman.conf
@@ -112,23 +130,6 @@ swapon /dev/<particao_swap>
    [multilib]
    Include = ...
    ```
-
-### **Instalar Pacotes Essenciais**
-
-```bash
-pacstrap /mnt base base-devel linux linux-headers linux-firmware nano vim
-```
-
----
-
-## **4. Configuração do Sistema (Chroot)**
-
-### **Gerar Fstab e Entrar em Chroot**
-
-```bash
-genfstab -U /mnt >> /mnt/etc/fstab
-arch-chroot /mnt
-```
 
 ### **Fuso Horário, Idioma e Teclado**
 
@@ -203,7 +204,7 @@ Descomente a linha:
 
 ---
 
-## **5. Configuração de Gráficos (NVIDIA)**
+## **4. Configuração de Gráficos (NVIDIA)**
 
 Esta seção é para usuários de placas de vídeo NVIDIA que buscam aceleração por hardware.
 
@@ -230,7 +231,7 @@ mkinitcpio -P
 
 ---
 
-## **6. Bootloader e Rede**
+## **5. Bootloader e Rede**
 
 ### **Instalar e Configurar o GRUB**
 
@@ -281,7 +282,7 @@ systemctl enable NetworkManager
 
 ---
 
-## **7. Reiniciar o Sistema**
+## **6. Reiniciar o Sistema**
 
 ```bash
 exit
