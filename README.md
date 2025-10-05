@@ -177,12 +177,17 @@ Substitua `archlinux` pelo hostname escolhido:
 ::1         localhost
 127.0.1.1   archlinux.localdomain   archlinux
 ```
+```bash
+# Definir senha de root
+passwd
+```
 
 ### **Usuários e Sudoers**
 
 ```bash
-# Definir senha de root
-passwd
+# Remover # de:
+# %wheel ALL=(ALL:ALL) ALL em:
+nano /etc/sudoers
 ```
 
 ```bash
@@ -191,16 +196,6 @@ useradd -m -G wheel <nome_do_usuario>
 passwd <nome_do_usuario>
 ```
 
-```bash
-# Habilitar Sudoers (acesso admin para o grupo wheel)
-EDITOR=nano visudo
-```
-
-Descomente a linha:
-
-```
-# %wheel ALL=(ALL:ALL) ALL
-```
 
 ---
 
@@ -237,7 +232,13 @@ mkinitcpio -P
 
 ```bash
 # Instalar pacotes do bootloader
-pacman -S dosfstools mtools os-prober efibootmgr grub networkmanager iwd
+pacman -S dosfstools mtools os-prober efibootmgr grub networkmanager iwd amd-ucode
+```
+
+
+```bash
+# Instalar o GRUB na partição EFI
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux --recheck
 ```
 
 ```bash
@@ -254,9 +255,6 @@ Procure a linha:
 e remova o `#`.
 
 ```bash
-# Instalar o GRUB na partição EFI
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux --recheck
-
 # Gerar arquivo de configuração do GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
