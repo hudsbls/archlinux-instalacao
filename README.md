@@ -228,7 +228,7 @@ mkinitcpio -P
 
 ## **5. Bootloader e Rede**
 
-### **Instalar e Configurar o GRUB**
+### **Instalar pacotes e Configurar o GRUB**
 
 ```bash
 # Instalar pacotes do bootloader
